@@ -18,7 +18,15 @@ const criteria = computed(() =>
 
 const hasFilters = computed(() => Object.keys(criteria.value).length > 0);
 
-const error = computed(() => usePage().props.errors?.criteria);
+// Any reason the save was rejected, not only "no criteria": the listings page
+// accepts some values a saved search doesn't (a budget too large to store).
+const error = computed(() => {
+    const errors = usePage().props.errors ?? {};
+
+    return ['criteria', 'property_type', 'region', 'max_price', 'min_bedrooms']
+        .map((key) => errors[key])
+        .find(Boolean);
+});
 
 function save() {
     router.post('/saved-searches', criteria.value, {

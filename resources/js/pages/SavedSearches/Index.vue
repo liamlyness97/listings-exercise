@@ -9,6 +9,11 @@ defineProps({
 });
 
 function destroy(search) {
+    // Deleting can't be undone, so check a misclick first.
+    if (!window.confirm('Delete this saved search? You will stop getting alerts for it.')) {
+        return;
+    }
+
     router.delete(`/saved-searches/${search.id}`, { preserveScroll: true });
 }
 </script>

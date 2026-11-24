@@ -31,6 +31,10 @@ class ActAsDemoUser
 
         if ($demoUser !== null) {
             Auth::setUser($demoUser);
+        } else {
+            // Clear any user left on the guard by an earlier request on the
+            // same app instance, so "no user" really means a guest.
+            Auth::forgetUser();
         }
 
         return $next($request);
