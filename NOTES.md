@@ -15,6 +15,7 @@
 
 - **The auth stub only half worked:** `auth()->user()` was null, so middleware and policies treated everyone as a guest. I fixed the stub (set the guard user, register it before the `auth` middleware) instead of working around it, and tests pin both changes.
 - **Queue timing bugs** hidden by a synchronous test queue: a search saved while the job waited was alerted, and a listing returned to draft before the job ran used up the user's one alert. Fixed by recording go-live time and skipping listings that are no longer live.
+- **Deleting a search mid-job** failed a foreign key and stopped the job, so buyers later in the loop lost their alerts. Each buyer is now handled separately and only searches that still exist are linked. Any failure is rethrown afterwards so the queue can retry, which is safe because the job is idempotent.
 - **SQLite hides MySQL behaviour:** `max_price` had no upper bound (a 500 on MySQL), and SQLite can't catch a missing pagination tiebreaker, so my alerts pagination test asserts exact order.
 - **Existing issues raised, not fixed:** an N+1 on the listings index, no visible filter errors, `per_page` lost on search, and no upper bound on the page's `max_price`.
 
@@ -32,6 +33,7 @@ Email delivery and digest (designed, not built), scoring matches, grouping alert
 - Bulk imports create one job per listing and need batching.
 - The alerts table grows forever and needs clean-up and a (`user_id`, `created_at`) index.
 - Two identical saves at the same instant can both succeed, which is harmless but untidy.
+- A tiny window remains where a search deleted mid-job leaves one buyer's alert without its matched links. A retry repairs it, and locking the search rows while linking would close it.
 - Alerts need a queue worker running (documented in the README).
 
 ## What I'd do next
