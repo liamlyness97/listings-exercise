@@ -5,8 +5,10 @@ namespace App\Listeners;
 use App\Enums\ListingStatus;
 use App\Events\ListingWentLive;
 use App\Models\Alert;
+use App\Models\Listing;
 use App\Models\SavedSearch;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Throwable;
 
 /**
  * Turns a newly live listing into alerts: one per user whose saved searches it
@@ -46,13 +48,38 @@ class CreateAlertsForMatchingSavedSearches implements ShouldQueue
             ->get(['id', 'user_id'])
             ->groupBy('user_id');
 
-        foreach ($matchesByUser as $userId => $searches) {
-            $alert = Alert::query()->createOrFirst([
-                'user_id' => $userId,
-                'listing_id' => $listing->id,
-            ]);
+        // Each user is handled on their own, so one failure doesn't cost the
+        // others their alerts. Any failure is rethrown once everyone else is
+        // done, so the queue can retry; retries are safe (see above).
+        $firstFailure = null;
 
-            $alert->savedSearches()->syncWithoutDetaching($searches->modelKeys());
+        foreach ($matchesByUser as $userId => $searches) {
+            try {
+                $this->alertUser($userId, $listing, $searches->modelKeys());
+            } catch (Throwable $exception) {
+                $firstFailure ??= $exception;
+            }
         }
+
+        if ($firstFailure !== null) {
+            throw $firstFailure;
+        }
+    }
+
+    /**
+     * @param  list<int>  $searchIds
+     */
+    private function alertUser(int $userId, Listing $listing, array $searchIds): void
+    {
+        $alert = Alert::query()->createOrFirst([
+            'user_id' => $userId,
+            'listing_id' => $listing->id,
+        ]);
+
+        // Only link searches that still exist: the user may have deleted one
+        // since matching ran, and linking it would fail its foreign key.
+        $stillSaved = SavedSearch::query()->whereKey($searchIds)->pluck('id')->all();
+
+        $alert->savedSearches()->syncWithoutDetaching($stillSaved);
     }
 }
