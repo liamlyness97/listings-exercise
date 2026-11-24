@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -17,25 +18,24 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class ActAsDemoUser
 {
-    private ?User $demoUser = null;
-
-    private bool $resolved = false;
-
     public function handle(Request $request, Closure $next): Response
     {
-        // Resolved lazily and only once per request — repeated auth()->user()
-        // calls should not each hit the database.
+        // Resolved once per request and handed to the auth guard, so
+        // $request->user(), auth()->user(), the `auth` middleware and policies
+        // all see the same user. (Replacing only the request's user resolver
+        // left auth()->user() null and every policy treating requests as guests.)
         //
         // This is null until the database is seeded (`php artisan migrate --seed`),
         // which is the same shape as a genuinely unauthenticated request.
-        $request->setUserResolver(function (): ?User {
-            if (! $this->resolved) {
-                $this->demoUser = User::query()->orderBy('id')->first();
-                $this->resolved = true;
-            }
+        $demoUser = User::query()->orderBy('id')->first();
 
-            return $this->demoUser;
-        });
+        if ($demoUser !== null) {
+            Auth::setUser($demoUser);
+        } else {
+            // Clear any user left on the guard by an earlier request on the
+            // same app instance, so "no user" really means a guest.
+            Auth::forgetUser();
+        }
 
         return $next($request);
     }
