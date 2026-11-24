@@ -2,22 +2,11 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '../../components/AppLayout.vue';
 import SavedSearchSummary from '../../components/SavedSearchSummary.vue';
+import { currentMatchesUrl } from '../../saved-search';
 
 defineProps({
     savedSearches: { type: Array, required: true },
 });
-
-// A match means the same as the listings page, so "current matches" is just
-// the listings page with this search's filters in the query string.
-function currentMatchesUrl(search) {
-    const criteria = Object.fromEntries(
-        ['property_type', 'region', 'max_price', 'min_bedrooms']
-            .filter((key) => search[key] !== null)
-            .map((key) => [key, search[key]]),
-    );
-
-    return `/?${new URLSearchParams(criteria)}`;
-}
 
 function destroy(search) {
     router.delete(`/saved-searches/${search.id}`, { preserveScroll: true });

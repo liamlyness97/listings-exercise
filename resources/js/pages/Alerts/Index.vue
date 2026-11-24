@@ -1,10 +1,11 @@
 <script setup>
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import AppLayout from '../../components/AppLayout.vue';
 import ListingCard from '../../components/ListingCard.vue';
 import Pagination from '../../components/Pagination.vue';
 import SavedSearchSummary from '../../components/SavedSearchSummary.vue';
 import { formatDate } from '../../format';
+import { currentMatchesUrl } from '../../saved-search';
 
 defineProps({
     alerts: { type: Object, required: true },
@@ -24,7 +25,13 @@ defineProps({
                         Matched:
                         <template v-for="(search, index) in alert.saved_searches" :key="search.id">
                             <span v-if="index > 0">; </span>
-                            <SavedSearchSummary :search="search" class="text-slate-700" />
+                            <Link
+                                :href="currentMatchesUrl(search)"
+                                class="text-slate-700 underline underline-offset-2 hover:text-slate-900"
+                                title="View this search's current matches"
+                            >
+                                <SavedSearchSummary :search="search" />
+                            </Link>
                         </template>
                         <span v-if="!alert.saved_searches.length">a search you've since deleted</span>
                     </p>
