@@ -81,6 +81,25 @@ class SavedSearchPageTest extends TestCase
         $this->assertSame(0, SavedSearch::count());
     }
 
+    /**
+     * "0+ beds" matches every listing, so on its own it would be an
+     * alert-on-everything search. It means "any", so it isn't a criterion.
+     */
+    public function test_zero_minimum_bedrooms_alone_does_not_count_as_a_criterion(): void
+    {
+        $this->post('/saved-searches', ['min_bedrooms' => 0])
+            ->assertSessionHasErrors('criteria');
+
+        $this->assertSame(0, SavedSearch::count());
+    }
+
+    public function test_zero_minimum_bedrooms_is_stored_as_any(): void
+    {
+        $this->post('/saved-searches', ['region' => 'Leeds', 'min_bedrooms' => 0]);
+
+        $this->assertNull(SavedSearch::sole()->min_bedrooms);
+    }
+
     public function test_store_rejects_an_invalid_property_type(): void
     {
         $this->post('/saved-searches', ['property_type' => 'castle'])

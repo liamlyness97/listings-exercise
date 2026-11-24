@@ -20,6 +20,18 @@ class SavedSearchStoreRequest extends FormRequest
     }
 
     /**
+     * "0+ beds" matches every listing: it means "any", the same as blank. Left
+     * as a value it would count as a criterion and let an alert-on-everything
+     * search through.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ((string) $this->input('min_bedrooms') === '0') {
+            $this->merge(['min_bedrooms' => null]);
+        }
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function rules(): array
