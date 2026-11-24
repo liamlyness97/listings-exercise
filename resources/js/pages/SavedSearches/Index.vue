@@ -1,10 +1,27 @@
 <script setup>
-import { Head } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '../../components/AppLayout.vue';
+import SavedSearchSummary from '../../components/SavedSearchSummary.vue';
 
 defineProps({
     savedSearches: { type: Array, required: true },
 });
+
+// A match means the same as the listings page, so "current matches" is just
+// the listings page with this search's filters in the query string.
+function currentMatchesUrl(search) {
+    const criteria = Object.fromEntries(
+        ['property_type', 'region', 'max_price', 'min_bedrooms']
+            .filter((key) => search[key] !== null)
+            .map((key) => [key, search[key]]),
+    );
+
+    return `/?${new URLSearchParams(criteria)}`;
+}
+
+function destroy(search) {
+    router.delete(`/saved-searches/${search.id}`, { preserveScroll: true });
+}
 </script>
 
 <template>
@@ -15,9 +32,25 @@ defineProps({
             <li
                 v-for="search in savedSearches"
                 :key="search.id"
-                class="rounded-xl border border-slate-200 bg-white p-4"
+                class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4"
             >
-                Saved search #{{ search.id }}
+                <SavedSearchSummary :search="search" class="font-medium" />
+
+                <div class="flex items-center gap-4 text-sm">
+                    <Link
+                        :href="currentMatchesUrl(search)"
+                        class="text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline"
+                    >
+                        View current matches
+                    </Link>
+                    <button
+                        type="button"
+                        class="text-red-600 underline-offset-2 hover:underline"
+                        @click="destroy(search)"
+                    >
+                        Delete
+                    </button>
+                </div>
             </li>
         </ul>
 

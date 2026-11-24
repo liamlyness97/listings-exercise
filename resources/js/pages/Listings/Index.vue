@@ -5,6 +5,7 @@ import AppLayout from '../../components/AppLayout.vue';
 import ListingCard from '../../components/ListingCard.vue';
 import ListingFilters from '../../components/ListingFilters.vue';
 import Pagination from '../../components/Pagination.vue';
+import SaveSearchButton from '../../components/SaveSearchButton.vue';
 
 const props = defineProps({
     listings: { type: Object, required: true },
@@ -59,6 +60,8 @@ function reset() {
             @submit="search"
             @reset="reset"
         />
+
+        <SaveSearchButton :filters="filters" />
 
         <p class="mb-4 text-sm text-slate-500" aria-live="polite">
             <span v-if="processing">Loading…</span>
