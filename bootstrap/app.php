@@ -33,6 +33,11 @@ return Application::configure(basePath: dirname(__DIR__))
             before: AuthenticatesRequests::class,
             prepend: ActAsDemoUser::class,
         );
+
+        // The framework's default sends guests to route('login'), which doesn't
+        // exist while auth is stubbed. Until the database is seeded the stub
+        // resolves no user, so user-scoped pages send guests to the listings.
+        $middleware->redirectGuestsTo('/');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
