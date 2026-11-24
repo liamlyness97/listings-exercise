@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PropertyType;
 use Database\Factories\SavedSearchFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -68,5 +69,33 @@ class SavedSearch extends Model
     public function alerts(): BelongsToMany
     {
         return $this->belongsToMany(Alert::class);
+    }
+
+    /**
+     * Saved searches the given listing satisfies: every criterion is either
+     * blank or met, using the same comparisons as the listings index filters
+     * (kept in step by SavedSearchTest::test_matching_agrees_with_the_listings_page).
+     *
+     * @param  Builder<SavedSearch>  $query
+     */
+    public function scopeMatching(Builder $query, Listing $listing): void
+    {
+        // Loaded once here rather than lazily, so matching costs one query for
+        // the branch however many searches are checked.
+        $listing->loadMissing('branch');
+
+        $query
+            ->where(fn (Builder $q) => $q
+                ->whereNull('property_type')
+                ->orWhere('property_type', $listing->property_type))
+            ->where(fn (Builder $q) => $q
+                ->whereNull('region')
+                ->orWhere('region', $listing->branch->region))
+            ->where(fn (Builder $q) => $q
+                ->whereNull('max_price')
+                ->orWhere('max_price', '>=', $listing->price))
+            ->where(fn (Builder $q) => $q
+                ->whereNull('min_bedrooms')
+                ->orWhere('min_bedrooms', '<=', $listing->bedrooms));
     }
 }
