@@ -40,6 +40,19 @@ class ActAsDemoUserTest extends TestCase
         ]);
     }
 
+    /**
+     * Laravel sorts the `auth` middleware ahead of ordinary web-group
+     * middleware, so the stub must be prioritised before it or `auth` would
+     * run first and see a guest.
+     */
+    public function test_routes_behind_the_auth_middleware_see_the_demo_user(): void
+    {
+        Route::middleware(['web', 'auth'])->get('/_test/members-only', fn () => 'ok');
+        User::factory()->create();
+
+        $this->get('/_test/members-only')->assertOk();
+    }
+
     public function test_an_unseeded_database_behaves_like_a_guest(): void
     {
         $this->get('/_test/current-user')->assertExactJson([
