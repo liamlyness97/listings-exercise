@@ -53,6 +53,21 @@ class ActAsDemoUserTest extends TestCase
         $this->get('/_test/members-only')->assertOk();
     }
 
+    /**
+     * The app instance can outlive a request (several requests in one test,
+     * or a long-running server). A user set on the guard by an earlier request
+     * must not leak into one that finds no user.
+     */
+    public function test_a_user_from_an_earlier_request_does_not_leak_into_a_guest_request(): void
+    {
+        $demo = User::factory()->create();
+        $this->get('/_test/current-user')->assertJsonPath('authenticated', true);
+
+        $demo->delete();
+
+        $this->get('/_test/current-user')->assertJsonPath('authenticated', false);
+    }
+
     public function test_an_unseeded_database_behaves_like_a_guest(): void
     {
         $this->get('/_test/current-user')->assertExactJson([
