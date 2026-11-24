@@ -45,6 +45,30 @@ class AlertPageTest extends TestCase
             );
     }
 
+    /**
+     * Mirrors the listings index test: alerts created in the same second must
+     * page in a stable order, or rows repeat or go missing between pages.
+     */
+    public function test_index_paginates_deterministically_when_alerted_at_ties(): void
+    {
+        $alerts = Alert::factory(16)->for($this->user)->create(['created_at' => now()->subHour()]);
+
+        $page = fn (int $number) => $this->get("/alerts?page={$number}")->viewData('page')['props']['alerts'];
+
+        $first = $page(1);
+        $second = $page(2);
+        $firstIds = collect($first['data'])->pluck('id')->all();
+        $secondIds = collect($second['data'])->pluck('id')->all();
+
+        // Ties are broken by highest id first, so the order is fully defined.
+        $this->assertSame($alerts->pluck('id')->sortDesc()->take(15)->values()->all(), $firstIds);
+        $this->assertCount(1, $secondIds);
+        $this->assertSame([], array_intersect($firstIds, $secondIds), 'Pages must not overlap.');
+        $this->assertCount(16, array_unique([...$firstIds, ...$secondIds]));
+        $this->assertSame(2, $first['meta']['last_page']);
+        $this->assertNotNull($first['links']['next']);
+    }
+
     public function test_index_excludes_other_users_alerts(): void
     {
         Alert::factory()->for($this->user)->create();
