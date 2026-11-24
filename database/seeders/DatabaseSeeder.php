@@ -5,10 +5,15 @@ namespace Database\Seeders;
 use App\Models\Branch;
 use App\Models\Listing;
 use App\Models\User;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
+    // Seeded listings aren't new to anyone, so creating them must not trigger
+    // saved-search matching (see ListingObserver).
+    use WithoutModelEvents;
+
     public function run(): void
     {
         // The demo user that the auth stub resolves every API request as.
