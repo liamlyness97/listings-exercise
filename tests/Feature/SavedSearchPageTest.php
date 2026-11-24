@@ -89,6 +89,27 @@ class SavedSearchPageTest extends TestCase
         $this->assertSame(0, SavedSearch::count());
     }
 
+    /**
+     * max_price is an unsigned integer column. A larger budget must come back
+     * as a field error, not a database error (SQLite doesn't enforce column
+     * sizes, so only the validation rule protects MySQL here).
+     */
+    public function test_store_rejects_a_budget_larger_than_the_column_can_hold(): void
+    {
+        $this->post('/saved-searches', ['max_price' => 4_294_967_296])
+            ->assertSessionHasErrors('max_price');
+
+        $this->assertSame(0, SavedSearch::count());
+    }
+
+    public function test_store_accepts_the_largest_budget_the_column_can_hold(): void
+    {
+        $this->post('/saved-searches', ['max_price' => 4_294_967_295])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(4_294_967_295, SavedSearch::sole()->max_price);
+    }
+
     public function test_store_does_not_duplicate_an_identical_search(): void
     {
         $this->post('/saved-searches', ['property_type' => 'flat', 'region' => 'Leeds']);

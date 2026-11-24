@@ -27,7 +27,9 @@ class SavedSearchStoreRequest extends FormRequest
         return [
             'property_type' => ['nullable', new Enum(PropertyType::class)],
             'region' => ['nullable', 'string', 'max:100'],
-            'max_price' => ['nullable', 'integer', 'min:0'],
+            // The upper bound is the largest value the unsigned integer column
+            // holds; anything bigger would be a database error, not a field error.
+            'max_price' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
             'min_bedrooms' => ['nullable', 'integer', 'min:0', 'max:20'],
         ];
     }
