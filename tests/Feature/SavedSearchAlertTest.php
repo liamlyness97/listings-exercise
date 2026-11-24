@@ -107,6 +107,23 @@ class SavedSearchAlertTest extends TestCase
     }
 
     /**
+     * The listener is queued, so a search can be saved after the listing went
+     * live but before the job runs. That search must not hear about the
+     * listing, or a worker outage would turn into a backfill burst.
+     */
+    public function test_a_search_saved_while_the_job_waits_is_not_alerted(): void
+    {
+        $listing = $this->goLive();
+        $event = new ListingWentLive($listing);
+
+        $this->travel(1)->minutes();
+        $this->searchFor(User::factory()->create(), ['region' => 'Manchester']);
+        app(CreateAlertsForMatchingSavedSearches::class)->handle($event);
+
+        $this->assertSame(0, Alert::count());
+    }
+
+    /**
      * Queued jobs can run more than once after a failure; a retry must not
      * duplicate the alert or its links.
      */

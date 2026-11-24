@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use App\Models\Listing;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -16,5 +17,16 @@ class ListingWentLive implements ShouldDispatchAfterCommit
 {
     use Dispatchable, SerializesModels;
 
-    public function __construct(public Listing $listing) {}
+    /**
+     * When the listing went live. Queued listeners run later, so they use this
+     * rather than "now" to tell what existed at the moment it happened.
+     * (listed_at isn't used: whoever makes a listing live sets it, so it can be
+     * backdated or missing.)
+     */
+    public CarbonImmutable $wentLiveAt;
+
+    public function __construct(public Listing $listing)
+    {
+        $this->wentLiveAt = CarbonImmutable::now();
+    }
 }
