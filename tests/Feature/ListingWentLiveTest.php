@@ -6,7 +6,9 @@ use App\Enums\ListingStatus;
 use App\Events\ListingWentLive;
 use App\Models\Listing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use RuntimeException;
 use Tests\TestCase;
 
 class ListingWentLiveTest extends TestCase
@@ -64,6 +66,26 @@ class ListingWentLiveTest extends TestCase
 
         $listing->update(['status' => ListingStatus::Sold]);
 
+        Event::assertNotDispatched(ListingWentLive::class);
+    }
+
+    /**
+     * The event waits for the transaction to commit, so a listing that is
+     * rolled back never alerts anyone about a property that doesn't exist.
+     */
+    public function test_a_listing_rolled_back_in_a_transaction_does_not_dispatch_the_event(): void
+    {
+        try {
+            DB::transaction(function () {
+                Listing::factory()->live()->create();
+
+                throw new RuntimeException('Something later in the save failed.');
+            });
+        } catch (RuntimeException) {
+            // Expected: the transaction rolled back.
+        }
+
+        $this->assertSame(0, Listing::count());
         Event::assertNotDispatched(ListingWentLive::class);
     }
 
