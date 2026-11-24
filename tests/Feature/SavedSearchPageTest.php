@@ -100,6 +100,18 @@ class SavedSearchPageTest extends TestCase
         $this->assertNull(SavedSearch::sole()->min_bedrooms);
     }
 
+    /**
+     * Malformed input (an array, from an edited URL or form) must come back as
+     * a field error, not a server error.
+     */
+    public function test_store_rejects_an_array_for_minimum_bedrooms(): void
+    {
+        $this->post('/saved-searches', ['region' => 'Leeds', 'min_bedrooms' => [0]])
+            ->assertSessionHasErrors('min_bedrooms');
+
+        $this->assertSame(0, SavedSearch::count());
+    }
+
     public function test_store_rejects_an_invalid_property_type(): void
     {
         $this->post('/saved-searches', ['property_type' => 'castle'])

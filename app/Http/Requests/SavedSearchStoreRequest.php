@@ -26,7 +26,9 @@ class SavedSearchStoreRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        if ((string) $this->input('min_bedrooms') === '0') {
+        // Compared without casting: malformed input such as an array must reach
+        // the `integer` rule and fail there, not error here.
+        if (in_array($this->input('min_bedrooms'), [0, '0'], true)) {
             $this->merge(['min_bedrooms' => null]);
         }
     }
