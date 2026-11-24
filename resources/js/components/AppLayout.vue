@@ -15,6 +15,7 @@ defineProps({
                 <Link href="/saved-searches" class="ml-auto transition hover:text-slate-900">
                     Saved searches
                 </Link>
+                <Link href="/alerts" class="transition hover:text-slate-900">Alerts</Link>
             </nav>
             <h1 class="mt-2 text-3xl font-bold tracking-tight">{{ heading }}</h1>
             <p v-if="subheading" class="mt-1 text-slate-500">{{ subheading }}</p>
