@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Enums\ListingStatus;
 use App\Events\ListingWentLive;
 use App\Models\Alert;
 use App\Models\SavedSearch;
@@ -18,9 +19,23 @@ use Illuminate\Contracts\Queue\ShouldQueue;
  */
 class CreateAlertsForMatchingSavedSearches implements ShouldQueue
 {
+    /**
+     * A listing deleted before the job runs can't be matched; drop the job
+     * rather than fail and retry it.
+     */
+    public bool $deleteWhenMissingModels = true;
+
     public function handle(ListingWentLive $event): void
     {
         $listing = $event->listing;
+
+        // The job sees the listing as it is now, which may be later than when
+        // it went live. If it has come off the market since, don't alert:
+        // that would use up each user's one alert for it, and a genuine relist
+        // later would then never reach them.
+        if ($listing->status !== ListingStatus::Live) {
+            return;
+        }
 
         $matchesByUser = SavedSearch::query()
             ->matching($listing)

@@ -140,6 +140,40 @@ class SavedSearchAlertTest extends TestCase
         $this->assertCount(1, Alert::sole()->savedSearches);
     }
 
+    /**
+     * The job sees the listing as it is when it runs. If it came off the
+     * market in the meantime, alerting now would also use up the user's one
+     * alert for it, so a genuine relist later would never reach them.
+     */
+    public function test_a_listing_taken_off_the_market_before_the_job_runs_is_not_alerted(): void
+    {
+        $this->searchFor(User::factory()->create(), ['region' => 'Manchester']);
+        $listing = Listing::withoutEvents(fn () => $this->goLive());
+        $event = new ListingWentLive($listing);
+
+        Listing::withoutEvents(fn () => $listing->update(['status' => ListingStatus::Draft]));
+        app(CreateAlertsForMatchingSavedSearches::class)->handle($event);
+
+        $this->assertSame(0, Alert::count());
+    }
+
+    /**
+     * A listing deleted before the job runs can't be restored by the queue;
+     * the job should be dropped rather than fail and retry.
+     */
+    public function test_the_queued_job_is_dropped_if_the_listing_was_deleted(): void
+    {
+        Queue::fake();
+
+        $this->goLive();
+
+        Queue::assertPushed(
+            CallQueuedListener::class,
+            fn (CallQueuedListener $job) => $job->class === CreateAlertsForMatchingSavedSearches::class
+                && $job->deleteWhenMissingModels === true,
+        );
+    }
+
     public function test_the_listener_is_queued(): void
     {
         Queue::fake();
