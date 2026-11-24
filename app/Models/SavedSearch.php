@@ -4,9 +4,11 @@ namespace App\Models;
 
 use App\Enums\PropertyType;
 use Database\Factories\SavedSearchFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -22,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read User $user
+ * @property-read Collection<int, Alert> $alerts
  */
 class SavedSearch extends Model
 {
@@ -57,5 +60,13 @@ class SavedSearch extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsToMany<Alert, $this>
+     */
+    public function alerts(): BelongsToMany
+    {
+        return $this->belongsToMany(Alert::class);
     }
 }
