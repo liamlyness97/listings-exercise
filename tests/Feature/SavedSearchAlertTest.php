@@ -14,6 +14,7 @@ use App\Models\User;
 use Illuminate\Events\CallQueuedListener;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -172,6 +173,53 @@ class SavedSearchAlertTest extends TestCase
             fn (CallQueuedListener $job) => $job->class === CreateAlertsForMatchingSavedSearches::class
                 && $job->deleteWhenMissingModels === true,
         );
+    }
+
+    /**
+     * A buyer can delete a search between the job matching it and linking it
+     * to their alert. Linking a search that no longer exists must not fail.
+     */
+    public function test_a_search_deleted_while_the_job_runs_does_not_break_alerting(): void
+    {
+        $user = User::factory()->create();
+        $deleted = $this->searchFor($user, ['region' => 'Manchester']);
+        $kept = $this->searchFor($user, ['property_type' => PropertyType::Flat]);
+        $listing = Listing::withoutEvents(fn () => $this->goLive());
+
+        // Simulates the buyer deleting a search just after matching ran.
+        Alert::created(fn () => $deleted->delete());
+        app(CreateAlertsForMatchingSavedSearches::class)->handle(new ListingWentLive($listing));
+
+        $this->assertEquals([$kept->id], Alert::sole()->savedSearches->modelKeys());
+    }
+
+    /**
+     * One buyer's failure must not cost other buyers their alerts. The job
+     * still fails afterwards so the queue can retry it, which is safe because
+     * a retry finds the alerts already made.
+     */
+    public function test_a_failure_for_one_buyer_does_not_stop_alerts_for_others(): void
+    {
+        $unlucky = User::factory()->create();
+        $other = User::factory()->create();
+        $this->searchFor($unlucky, ['region' => 'Manchester']);
+        $this->searchFor($other, ['region' => 'Manchester']);
+        $listing = Listing::withoutEvents(fn () => $this->goLive());
+
+        Alert::creating(function (Alert $alert) use ($unlucky) {
+            if ($alert->user_id === $unlucky->id) {
+                throw new RuntimeException('Simulated failure for one buyer.');
+            }
+        });
+
+        try {
+            app(CreateAlertsForMatchingSavedSearches::class)->handle(new ListingWentLive($listing));
+            $this->fail('The job should fail so the queue can retry it.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Simulated failure for one buyer.', $exception->getMessage());
+        }
+
+        $this->assertEquals([$other->id], Alert::pluck('user_id')->all());
     }
 
     public function test_the_listener_is_queued(): void
