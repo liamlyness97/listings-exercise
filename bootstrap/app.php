@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\ActAsDemoUser;
 use App\Http\Middleware\HandleInertiaRequests;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -25,6 +26,18 @@ return Application::configure(basePath: dirname(__DIR__))
 
             HandleInertiaRequests::class,
         ]);
+
+        // Laravel sorts the `auth` middleware ahead of ordinary web middleware,
+        // so without this it would run before the stub and see a guest.
+        $middleware->prependToPriorityList(
+            before: AuthenticatesRequests::class,
+            prepend: ActAsDemoUser::class,
+        );
+
+        // The framework's default sends guests to route('login'), which doesn't
+        // exist while auth is stubbed. Until the database is seeded the stub
+        // resolves no user, so user-scoped pages send guests to the listings.
+        $middleware->redirectGuestsTo('/');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
